@@ -5,8 +5,12 @@
 
 ## Author: Scotepi
 ## Version: @project-version@
+## X-Category: Information
 
 ##SavedVariables: CID_Global
 ##SavedVariablesPerCharacter: CID_Local
 
+## OptionalDeps: LibStub
+
+embeds.xml
 CharacterInfoDurability.lua

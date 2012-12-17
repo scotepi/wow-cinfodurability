@@ -13,12 +13,13 @@ CID.addonNameAbr = "CID"
 --[[ end setup ]]
 
 
--- Temp settings we don't care about
+-- Additional addon setup
 CID.lastUpdate = 0;
+CID.durability = false
+CID.version = GetAddOnMetadata("CharacterInfoDurability", "Version")
+CID.versionRev = 'r@project-revision@'
+CID.ldb = LibStub:GetLibrary("LibDataBroker-1.1")
 
--- Settings to be move to saved variables
-CID.debug = false
-CID.color = true
 
 -- inventoryID to name
 CID.iidName = {
@@ -51,7 +52,7 @@ local CID_LocalDefault = {
 }
 
 function CID:OnInitialize()
-    self:Print('Character Info Durability Loaded... r@project-revision@')
+    self:Print('Character Info Durability Loaded... '..self.version..self.versionRev)
 
     -- Check saved variables
     if not CID_Global or type(CID_Global) ~= 'table' then CID_Global = CID_GlobalDefault end
@@ -63,23 +64,44 @@ function CID:OnInitialize()
         updateFunc = function(...) CID:UpdatePaperDollFrame(...); end
     }
 
+    -- Setup LDB
+    local ldbObj = {
+        type = "data source",
+        icon = "Interface\\Icons\\inv_misc_powder_black",
+        label = DURABILITY,
+        text = '??',
+        category = GetAddOnMetadata("CharacterInfoDurability", "X-Category"),
+        version = self.version,
+        -- OnClick = function(...) CID:MenuOpen(...); end,
+        OnTooltipShow = function(...) CID:LDBTooltip(...) end,
+    };
+    
+    -- Start LDB
+    self.ldb = self.ldb:NewDataObject(DURABILITY..' NewDataObject', ldbObj);
+
     -- Register events
-    -- self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function() CID:UpdatePaperDollFrame() end)
-    -- self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", function() CID:UpdatePaperDollFrame() end)
+    self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function() CID:CalculateDurability() end)
+    self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", function() CID:CalculateDurability() end)
+
+    -- Calculate the Durability
+    self:CalculateDurability()
 end
 
-function CID:Durability(item) 
-    local durability, max = GetInventoryItemDurability(item)
-    local average = false
 
-    if max then
-        average = durability / max
+-- Calculate the average, minimum, minslot and table of items durability
+function CID:CalculateDurability()
+    
+    -- Check that we havent checked this second
+    if self.lastUpdate == time() then
+        
+        -- We have a cache so use it
+        if self.durability then
+            return self.durability.average, self.durability.minItem, self.durability.minSlot , self.durability.slots
+        else
+            return false
+        end
     end
 
-    return average, durability, max
-end
-
-function CID:DurabilityAverage()
     local slots = {}
     local durability = 0
     local total = 0
@@ -112,33 +134,57 @@ function CID:DurabilityAverage()
         average = durability / total
     end
 
+    self.lastUpdate = time();
+
+    self.durability = {
+        average = average,
+        minItem = minItem,
+        minSlot = minSlot,
+        slots = slots,
+        avgFormated = self:FormatDurability(average),
+        minFormated = self:FormatDurability(minItem),
+    }
+    
+    -- Update the LDB text
+    self:LDBText()
+
     return average, minItem, minSlot, slots
 end
 
+-- Return the average, current and max durability for a given slot
+function CID:Durability(item) 
+    local durability, max = GetInventoryItemDurability(item)
+    local average = false
+
+    if max then
+        average = durability / max
+    end
+
+    return average, durability, max
+end
+
+-- Update the paperdoll frame text
 function CID:UpdatePaperDollFrame(statFrame, unit)
     if not statFrame then return false end
-    if self.lastUpdate == time() then return false end
 
+    local text1, text2 = self:TooltipText()
 
-    local average, minItem, minSlot, slots = self:DurabilityAverage();
-    self.lastUpdate = time();
-
-    self:Debug("Updating PaperDoll", average, min)
-    minFormated = self:FormatDurability(minItem, false);
-    avgFormatedC = self:FormatDurability(average);
-    minFormatedC = self:FormatDurability(minItem);
-    
+    -- Update Stat Frame
+    local minFormated = self:FormatDurability(self.durability.minItem, false);
     PaperDollFrame_SetLabelAndText(statFrame, DURABILITY, minFormated, false);
-    statFrame.tooltip = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormatedC, avgFormatedC)
-
-    if average ~= 1 then
-        statFrame.tooltip2 = format("%s: %s", self.iidName[minSlot], GetInventoryItemLink('player', minSlot))
-    end
     
+    -- Set the tooltip
+    if text1 then statFrame.tooltip = text1 end
+    if text2 then statFrame.tooltip2 = text2 end
+    
+    -- Update the frame
     statFrame:Show()
 end
 
+-- Format a 0-1 to a colorized %
 function CID:FormatDurability(value, colorize)
+    if not value then return false end
+
     if type(colorize) == 'nil' then colorize = true end
 
     local formated = (("%%.%df"):format(0)):format(value * 100);
@@ -158,8 +204,35 @@ function CID:FormatDurability(value, colorize)
     end
 end
 
+-- Update the text of LDB
+function CID:LDBText()
+    self.ldb.text = self.durability.minFormated..' / '..self.durability.avgFormated;
+end
 
+-- Show the LDB tooltip
+function CID:LDBTooltip(tt)
+    local text1, text2 = self:TooltipText()
 
+    if text1 then tt:AddLine(text1) end
+    if text2 then tt:AddLine(text2) end
+end
+
+-- return line 1 and 2 for tooltips
+function CID:TooltipText()
+    local text1, text2 = false
+    local average, minItem, minSlot, slots = self:CalculateDurability();
+
+    local avgFormatedC = self:FormatDurability(average);
+    local minFormatedC = self:FormatDurability(minItem);
+    
+    text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormatedC, avgFormatedC)
+
+    if average ~= 1 then
+        text2 = format("%s: %s", self.iidName[minSlot], GetInventoryItemLink('player', minSlot))
+    end
+    
+    return text1, text2
+end
 
 
 
