@@ -85,6 +85,7 @@ function CID:OnInitialize()
     -- Register events
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function() CID:CalculateDurability() end)
     self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", function() CID:CalculateDurability() end)
+    self:RegisterEvent("PLAYER_DEAD", function() CID:CalculateDurability() end)
 
     -- Calculate the Durability
     self:CalculateDurability()
@@ -194,9 +195,9 @@ function CID:FormatDurability(value, colorize)
         local color = "058633"
         
         if value < .25 then
-            color = "720026";
+            color = "ff0026"; -- Red
         elseif value < .5 then
-            color = "f6a01a";
+            color = "f6a01a"; -- Orange
         end
 
         return '|cFF'..color..formated..'%|r'
@@ -207,7 +208,7 @@ end
 
 -- Update the text of LDB
 function CID:LDBText()
-    if self.durability then
+    if self.durability and self.durability.average and self.durability.minItem then
         local avgFormated = self:FormatDurability(self.durability.average)
         local minFormated = self:FormatDurability(self.durability.minItem)
 
@@ -233,10 +234,13 @@ function CID:TooltipText()
     local avgFormated = self:FormatDurability(average);
     local minFormated = self:FormatDurability(minItem);
     
-    text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormated, avgFormated)
+    if minFormated and avgFormated then
+        text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormated, avgFormated)
+    end
 
-    if average ~= 1 then
-        text2 = format("%s: %s", self.iidName[minSlot], GetInventoryItemLink('player', minSlot))
+    if average ~= 1 and minSlot then
+        local itemLink = GetInventoryItemLink('player', minSlot)
+        text2 = format("%s: %s", self.iidName[minSlot], itemLink)
     end
     
     return text1, text2
