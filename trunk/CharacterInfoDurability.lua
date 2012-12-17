@@ -58,6 +58,9 @@ function CID:OnInitialize()
     if not CID_Global or type(CID_Global) ~= 'table' then CID_Global = CID_GlobalDefault end
     if not CID_Local or type(CID_Local) ~= 'table' then CID_Local = CID_LocalDefault end
 
+    -- Add slash handler
+    self:AddSlashHandlers({'cid', 'cinfodura', 'charactertnfodurability'}, function(...) CID:SlashHandler(...) end)
+
     -- Add to Paperdoll
     table.insert(PAPERDOLL_STATCATEGORIES["GENERAL"].stats, 'CharacterInfoDurability')
     PAPERDOLL_STATINFO['CharacterInfoDurability'] = {
@@ -227,10 +230,10 @@ function CID:TooltipText()
     local text1, text2 = false
     local average, minItem, minSlot, slots = self:CalculateDurability();
 
-    local avgFormatedC = self:FormatDurability(average);
-    local minFormatedC = self:FormatDurability(minItem);
+    local avgFormated = self:FormatDurability(average);
+    local minFormated = self:FormatDurability(minItem);
     
-    text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormatedC, avgFormatedC)
+    text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormated, avgFormated)
 
     if average ~= 1 then
         text2 = format("%s: %s", self.iidName[minSlot], GetInventoryItemLink('player', minSlot))
@@ -238,6 +241,36 @@ function CID:TooltipText()
     
     return text1, text2
 end
+
+-- slash handler
+function CID:SlashHandler(msg)
+    msg = strlower(msg) -- we don't care about case
+    local command, rest = msg:match("^(%S*)%s*(.-)$")
+
+    if command == 'color' or commane == 'c' then
+        if rest == '1' or rest == 'on' or rest == 'true' then
+            self:SetColor(true)
+        elseif rest == '0' or rest == 'off' or rest == 'false' then
+            self:SetColor(false)
+        else
+            self:ToggleColor()
+        end
+
+        self:LDBText()
+        self:Print(COLORIZE, self:GetColor())
+    
+
+    elseif command == 'debug' then
+        self:ToggleDebug()
+        self:Print('Debug', self:GetDebug())
+    
+
+    else
+        self:Print(UNAVAILABLE)
+
+    end
+end
+
 
 
 
@@ -254,7 +287,17 @@ function CID:ToggleColor() self:SetColor(not self:GetColor()) end
 
 
 
+--[[ Simplifying methods ]]
+function CID:AddSlashHandlers(tbl, handler)
+    if type(tbl) ~= 'table' then return false end
 
+    for i,slash in pairs(tbl) do
+        if strsub(slash,0,1) ~= '/' then slash = '/'..slash end
+        _G['SLASH_CID'..i] = slash
+    end
+
+    SlashCmdList["CID"] = handler
+end
 
 --[[ Ace3 Like methods and supporters ]]
 function CID:RegisterEvent(event, callback)
