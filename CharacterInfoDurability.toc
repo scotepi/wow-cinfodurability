@@ -10,7 +10,7 @@
 ##SavedVariables: CID_Global
 ##SavedVariablesPerCharacter: CID_Local
 
-## OptionalDeps: LibStub
+## OptionalDeps: LibStub, CallbackHandler-1.0
 
 # libs
 #@no-lib-strip@
