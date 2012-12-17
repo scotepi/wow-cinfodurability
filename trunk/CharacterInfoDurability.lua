@@ -72,7 +72,7 @@ function CID:OnInitialize()
         text = '??',
         category = GetAddOnMetadata("CharacterInfoDurability", "X-Category"),
         version = self.version,
-        -- OnClick = function(...) CID:MenuOpen(...); end,
+        OnClick = function(...) CID:ToggleColor(); CID:LDBText() end,
         OnTooltipShow = function(...) CID:LDBTooltip(...) end,
     };
     
@@ -141,8 +141,6 @@ function CID:CalculateDurability()
         minItem = minItem,
         minSlot = minSlot,
         slots = slots,
-        avgFormated = self:FormatDurability(average),
-        minFormated = self:FormatDurability(minItem),
     }
     
     -- Update the LDB text
@@ -206,7 +204,14 @@ end
 
 -- Update the text of LDB
 function CID:LDBText()
-    self.ldb.text = self.durability.minFormated..' / '..self.durability.avgFormated;
+    if self.durability then
+        local avgFormated = self:FormatDurability(self.durability.average)
+        local minFormated = self:FormatDurability(self.durability.minItem)
+
+        self.ldb.text = minFormated..' / '..avgFormated
+    else
+        self.ldb.text = '??'
+    end
 end
 
 -- Show the LDB tooltip
