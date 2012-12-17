@@ -52,7 +52,7 @@ local CID_LocalDefault = {
 }
 
 function CID:OnInitialize()
-    self:Print('Character Info Durability Loaded... '..self.version..self.versionRev)
+    self:Print('Character Info Durability Loaded... '..self.version..'-'..self.versionRev)
 
     -- Check saved variables
     if not CID_Global or type(CID_Global) ~= 'table' then CID_Global = CID_GlobalDefault end
@@ -171,7 +171,7 @@ function CID:UpdatePaperDollFrame(statFrame, unit)
     local text1, text2 = self:TooltipText()
 
     -- Update Stat Frame
-    local minFormated = self:FormatDurability(self.durability.minItem, false);
+    local minFormated = self:FormatDurability(self.durability.minItem, self.durability.minItem < .35);
     PaperDollFrame_SetLabelAndText(statFrame, DURABILITY, minFormated, false);
     
     -- Set the tooltip
