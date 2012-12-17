@@ -1,7 +1,0 @@
-<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
-	<!-- Embedded libraries -->
-    <!--@no-lib-strip@-->
-    <Script file="Libs\LibStub\LibStub.lua"/>
-	<!--@end-no-lib-strip@-->
-    <Script file="Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
-</Ui>
