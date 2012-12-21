@@ -5,21 +5,18 @@
 
 --[[ Setup the addon ]]
 CID = {}
-CID.cache = {}
-CID.events = {}
-CID.frame = CreateFrame("Frame", "CIDFrame")
-CID.addonName = "Character Info Durability"
-CID.addonNameAbr = "CID"
+CID.addonName = "Character Info Durability" -- Addon Name
+CID.addonFolder = "CharacterInfoDurability" -- Folder of the Addon
+CID.addonNameAbr = "CID"                    -- Short abbreviation
 --[[ end setup ]]
 
 
 -- Additional addon setup
 CID.lastUpdate = 0;
 CID.durability = false
-CID.version = GetAddOnMetadata("CharacterInfoDurability", "Version")
+CID.version = '@project-version@'
 CID.versionRev = 'r@project-revision@'
 CID.ldb = LibStub:GetLibrary("LibDataBroker-1.1")
-
 
 -- inventoryID to name
 CID.iidName = {
@@ -49,6 +46,8 @@ local CID_GlobalDefault = {
 }
 local CID_LocalDefault = {
     debug = false,
+    autorepair = false,
+    autorepairType = nil,
 }
 
 function CID:OnInitialize()
@@ -59,7 +58,7 @@ function CID:OnInitialize()
     if not CID_Local or type(CID_Local) ~= 'table' then CID_Local = CID_LocalDefault end
 
     -- Add slash handler
-    self:AddSlashHandlers({'cid', 'cinfodura', 'charactertnfodurability'}, function(...) CID:SlashHandler(...) end)
+    self:AddSlashHandler({'cid', 'cinfodura', 'charactertnfodurability'}, function(...) CID:SlashHandler(...) end)
 
     -- Add to Paperdoll
     table.insert(PAPERDOLL_STATCATEGORIES["GENERAL"].stats, 'CharacterInfoDurability')
@@ -86,6 +85,8 @@ function CID:OnInitialize()
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function() CID:CalculateDurability() end)
     self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", function() CID:CalculateDurability() end)
     self:RegisterEvent("PLAYER_DEAD", function() CID:CalculateDurability() end)
+    self:RegisterEvent("MERCHANT_SHOW", function() CID:RepairPopup() end)
+    self:RegisterEvent("MERCHANT_CLOSED", function() CID:RepairPopupHide() end)
 
     -- Calculate the Durability
     self:CalculateDurability()
@@ -246,6 +247,58 @@ function CID:TooltipText()
     return text1, text2
 end
 
+function CID:RepairPopup()
+    if not CanMerchantRepair() then return false end
+
+    if not StaticPopupDialogs["CID_REPAIR"] then
+        StaticPopupDialogs["CID_REPAIR"] = {
+            text = REPAIR_COST.." %s",
+            button1 = USE_PERSONAL_FUNDS,
+            button2 = CANCEL,
+            OnAccept = function() -- Personal Gold
+                    CID:Repair()
+                end,
+            OnAlt = function() -- Guild Bank
+                    CID:Repair(1)
+                end,
+            OnCancel = function() -- Cancel
+                end,
+            whileDead = false,
+            hideOnEscape = true,
+        }
+    end
+
+    if CanGuildBankRepair() then
+        StaticPopupDialogs["CID_REPAIR"].button3 = GUILDCONTROL_OPTION15
+    else
+        StaticPopupDialogs["CID_REPAIR"].button3 = nil
+    end
+
+    local repairAllCost, canRepair = GetRepairAllCost()
+
+    if repairAllCost > 0 then
+        if self:GetAutoRepair() then
+            self:Repair(self:GetAutoRepairType())
+        else
+            StaticPopup_Show("CID_REPAIR", GetCoinTextureString(repairAllCost))
+        end
+    end
+end
+
+function CID:RepairPopupHide()
+    StaticPopup_Hide("CID_REPAIR")
+end
+
+function CID:Repair(useGuildMoney)
+
+    local repairAllCost, canRepair = GetRepairAllCost()
+    self:Print(REPAIR_COST, GetCoinTextureString(repairAllCost))
+
+    -- Do the repair
+    RepairAllItems(useGuildMoney)
+    PlaySound("ITEM_REPAIR")
+end
+
 -- slash handler
 function CID:SlashHandler(msg)
     msg = strlower(msg) -- we don't care about case
@@ -262,7 +315,31 @@ function CID:SlashHandler(msg)
 
         self:LDBText()
         self:Print(COLORIZE, self:GetColor())
-    
+ 
+
+    elseif command == 'autorepair' or command == 'auto' then
+        if rest == '1' or rest == 'on' or rest == 'true' then
+            self:SetAutoRepair(true)
+        elseif rest == '0' or rest == 'off' or rest == 'false' then
+            self:SetAutoRepair(false)
+        else
+            self:ToggleAutoRepair()
+        end
+
+        self:Print(REPAIR_ITEMS..':', self:GetAutoRepair())
+
+
+    elseif command == 'useguild' or command == 'guild'  or command == 'guildbank' then
+        if rest == '1' or rest == 'on' or rest == 'true' then
+            self:SetAutoRepairType(1)
+        elseif rest == '0' or rest == 'off' or rest == 'false' then
+            self:SetAutoRepairType(nil)
+        else
+            self:ToggleAutoRepairType()
+        end
+
+        self:Print(GUILDCONTROL_OPTION15..':', self:GetAutoRepairType() or false)
+
 
     elseif command == 'debug' then
         self:ToggleDebug()
@@ -270,7 +347,9 @@ function CID:SlashHandler(msg)
     
 
     else
-        self:Print(UNAVAILABLE)
+        self:Print('/cid color [on|off]', COLORIZE, self:GetColor())
+        self:Print('/cid autorepair [on|off]', REPAIR_ITEMS..':', self:GetAutoRepair())
+        self:Print('/cid useguild [on|off]', GUILDCONTROL_OPTION15..':', self:GetAutoRepairType() or false)
 
     end
 end
@@ -288,22 +367,35 @@ function CID:SetColor(v) CID_Global.color = v end
 function CID:GetColor() return CID_Global.color end
 function CID:ToggleColor() self:SetColor(not self:GetColor()) end
 
+function CID:SetAutoRepair(v) CID_Local.autorepair = v end
+function CID:GetAutoRepair() return CID_Local.autorepair end
+function CID:ToggleAutoRepair() self:SetAutoRepair(not self:GetAutoRepair()) end
 
+function CID:SetAutoRepairType(v) CID_Local.autorepairType = v end
+function CID:GetAutoRepairType() return CID_Local.autorepairType end
+function CID:ToggleAutoRepairType() 
+    if self:GetAutoRepairType() == 1 then 
+        self:SetAutoRepairType(nil) 
+    else 
+        self:SetAutoRepairType(1)
+    end
+end
 
 
 --[[ Simplifying methods ]]
-function CID:AddSlashHandlers(tbl, handler)
+function CID:AddSlashHandler(tbl, handler)
     if type(tbl) ~= 'table' then return false end
 
     for i,slash in pairs(tbl) do
         if strsub(slash,0,1) ~= '/' then slash = '/'..slash end
-        _G['SLASH_CID'..i] = slash
+        _G['SLASH_'..self.addonFolder..i] = slash
     end
 
-    SlashCmdList["CID"] = handler
+    SlashCmdList[self.addonFolder] = handler
 end
 
 --[[ Ace3 Like methods and supporters ]]
+CID.events = {}
 function CID:RegisterEvent(event, callback)
     self.events[event] = callback
     self.frame:RegisterEvent(event)
@@ -324,5 +416,6 @@ function CID:Debug(...) if self:GetDebug() then print('|cFFFF0000'..self.addonNa
 local function OnEvent(self, ...) CID:OnEvent(...) end
 
 -- Register handlers
+CID.frame = CreateFrame("Frame", "CIDFrame")
 CID.frame:SetScript("OnEvent", OnEvent);
 CID:RegisterEvent("PLAYER_LOGIN", function() CID:OnInitialize(); end);

@@ -2,8 +2,8 @@
 
 ## Title: Character Info Durability
 ## Notes: Shows the minimum durability of equipped items on the stats frame.
-
 ## Author: Scotepi
+
 ## Version: @project-version@
 ## X-Category: Information
 

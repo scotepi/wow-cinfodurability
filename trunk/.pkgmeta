@@ -8,6 +8,7 @@ ignore:
     - Libs/LibDataBroker-1.1/.git
     - Libs/LibDataBroker-1.1/README.textile
     - Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
+    - Libs/LibStub/tests
 
 tools-used: 
     - libdatabroker-1-1
