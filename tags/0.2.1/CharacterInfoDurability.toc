@@ -1,0 +1,23 @@
+## Interface: 50200
+
+## Title: Character Info Durability
+## Notes: Shows the minimum durability of equipped items on the stats frame.
+## Author: Scotepi
+
+## Version: @project-version@
+## X-Category: Information
+
+##SavedVariables: CID_Global
+##SavedVariablesPerCharacter: CID_Local
+
+## OptionalDeps: LibStub, CallbackHandler-1.0
+
+# libs
+#@no-lib-strip@
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+#@end-no-lib-strip@
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+
+
+CharacterInfoDurability.lua
