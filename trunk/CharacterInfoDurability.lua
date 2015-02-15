@@ -48,6 +48,7 @@ local CID_LocalDefault = {
     debug = false,
     autorepair = false,
     autorepairType = nil,
+    popup = false,
 }
 
 function CID:OnInitialize()
@@ -276,10 +277,11 @@ function CID:RepairPopup()
 
     local repairAllCost, canRepair = GetRepairAllCost()
 
+    -- Only show the popup if we are over 0 to repair
     if repairAllCost > 0 then
         if self:GetAutoRepair() then
             self:Repair(self:GetAutoRepairType())
-        else
+        elseif self:GetPopup() then
             StaticPopup_Show("CID_REPAIR", GetCoinTextureString(repairAllCost))
         end
     end
@@ -315,7 +317,18 @@ function CID:SlashHandler(msg)
 
         self:LDBText()
         self:Print(COLORIZE, self:GetColor())
- 
+    
+
+    elseif command == 'popup' or command == 'prompt' then
+        if rest == '1' or rest == 'on' or rest == 'true' then
+            self:SetPopup(true)
+        elseif rest == '0' or rest == 'off' or rest == 'false' then
+            self:SetPopup(false)
+        else
+            self:TogglePopup()
+        end
+
+        self:Print(REPAIR_ITEMS..':', self:GetAutoRepair())
 
     elseif command == 'autorepair' or command == 'auto' then
         if rest == '1' or rest == 'on' or rest == 'true' then
@@ -370,6 +383,10 @@ function CID:ToggleColor() self:SetColor(not self:GetColor()) end
 function CID:SetAutoRepair(v) CID_Local.autorepair = v end
 function CID:GetAutoRepair() return CID_Local.autorepair end
 function CID:ToggleAutoRepair() self:SetAutoRepair(not self:GetAutoRepair()) end
+
+function CID:SetPopup(v) CID_Local.popup = v end
+function CID:GetPopup() return CID_Local.popup end
+function CID:TogglePopup() self:SetPopup(not self:GetPopup()) end
 
 function CID:SetAutoRepairType(v) CID_Local.autorepairType = v end
 function CID:GetAutoRepairType() return CID_Local.autorepairType end

@@ -1,4 +1,4 @@
-## Interface: 50300
+## Interface: 60000
 
 ## Title: Character Info Durability
 ## Notes: Shows the minimum durability of equipped items on the stats frame.
