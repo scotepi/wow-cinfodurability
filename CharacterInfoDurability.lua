@@ -62,7 +62,7 @@ function CID:OnInitialize()
     self:AddSlashHandler({'cid', 'cinfodura', 'charactertnfodurability'}, function(...) CID:SlashHandler(...) end)
 
     -- Add to Paperdoll
-    table.insert(PAPERDOLL_STATCATEGORIES["GENERAL"].stats, 'CharacterInfoDurability')
+    --table.insert(PAPERDOLL_STATCATEGORIES["GENERAL"].stats, 'CharacterInfoDurability')
     PAPERDOLL_STATINFO['CharacterInfoDurability'] = {
         updateFunc = function(...) CID:UpdatePaperDollFrame(...); end
     }
