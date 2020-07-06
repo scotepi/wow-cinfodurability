@@ -179,6 +179,7 @@ function CID:UpdatePaperDollFrame(statFrame, unit)
     PaperDollFrame_SetLabelAndText(statFrame, DURABILITY, minFormated, false);
     
     -- Set the tooltip
+    self:Debug("Setting the Tooltip", text1, text2)
     if text1 then statFrame.tooltip = text1 end
     if text2 then statFrame.tooltip2 = text2 end
     
@@ -239,11 +240,15 @@ function CID:TooltipText()
     
     if minFormated and avgFormated then
         text1 = format(gsub(DURABILITY_TEMPLATE, '%%d', '%%s'), minFormated, avgFormated)
+    else
+        text1 = DURABILITY
     end
 
     if average ~= 1 and minSlot then
         local itemLink = GetInventoryItemLink('player', minSlot)
         text2 = format("%s: %s", self.iidName[minSlot], itemLink)
+    else
+        text2 = FOLLOWER_ABILITY_CAST_ERROR_ALREADY_AT_MAX_DURABILITY
     end
     
     return text1, text2
